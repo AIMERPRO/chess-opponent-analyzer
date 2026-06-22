@@ -3,7 +3,7 @@ export
 
 DATABASE_URL=postgres://$(PG_USER):$(PG_PASSWORD)@$(PG_HOST):$(PG_PORT)/$(PG_DATABASE)?sslmode=$(PG_SSL_MODE)
 
-run-dev-local:
+local-dev-run:
 	@go run cmd/main.go
 
 local-migrate-up:
@@ -11,6 +11,9 @@ local-migrate-up:
 
 local-migrate-down:
 	migrate -path migrations -database "$(DATABASE_URL)" down
+
+make-migration:
+	@migrate create -ext sql -dir migrations -seq $(name)
 
 test:
 	go test ./... -v

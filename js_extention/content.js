@@ -112,8 +112,9 @@
     if (username) panel.querySelector(".coa-username").value = username;
     panel.querySelector(".coa-speed").value = detectSpeed();
 
+    // No auto-analysis: just prefill. The request runs only via the «Анализировать» button.
     if (username) {
-      runAnalysis(username, panel.querySelector(".coa-speed").value);
+      setBody(`<p class="coa-hint">Оппонент: <b>${escapeHtml(username)}</b>. Нажмите «Анализировать».</p>`);
     } else {
       setBody(`<p class="coa-hint">Не удалось найти оппонента автоматически. Введите username вручную и нажмите «Анализировать».</p>`);
     }

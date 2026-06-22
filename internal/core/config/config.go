@@ -14,14 +14,18 @@ type Config struct {
 	PgDatabase string
 	PgSSLMode  string
 
-	RedisHost          string
-	CORSAllowedOrigins string
-	RedisPort          int
+	RedisHost string
+	RedisPort int
 
 	JwtSecret string
 
-	GoPort int
-	AppEnv string
+	GoPort             int
+	AppEnv             string
+	CORSAllowedOrigins string
+	GlobalRateLimit    int
+	GlobalRateBurst    int
+	IPRateLimit        int
+	IPRateBurst        int
 
 	LichessGetGamesURL string
 }
@@ -86,6 +90,24 @@ func NewConfig() (*Config, error) {
 		corsAllowedOrigins = "*"
 	}
 
+	globalRateLimit, err := strconv.Atoi(os.Getenv("GLOBAL_RATE_LIMIT"))
+	if err != nil {
+		return nil, fmt.Errorf("GLOBAL_RATE_LIMIT must be a valid integer: %w", err)
+	}
+	globalRateBurst, err := strconv.Atoi(os.Getenv("GLOBAL_RATE_BURST"))
+	if err != nil {
+		return nil, fmt.Errorf("GLOBAL_RATE_BURST must be a valid integer: %w", err)
+	}
+
+	ipRateLimit, err := strconv.Atoi(os.Getenv("IP_RATE_LIMIT"))
+	if err != nil {
+		return nil, fmt.Errorf("IP_RATE_LIMIT must be a valid integer: %w", err)
+	}
+	ipRateBurst, err := strconv.Atoi(os.Getenv("IP_RATE_BURST"))
+	if err != nil {
+		return nil, fmt.Errorf("IP_RATE_BURST must be a valid integer: %w", err)
+	}
+
 	/* Variables for Lichess API */
 	lichessGetGamesURL := os.Getenv("LICHESS_GET_GAMES_URL")
 	if lichessGetGamesURL == "" {
@@ -100,14 +122,18 @@ func NewConfig() (*Config, error) {
 		PgDatabase: pgDatabase,
 		PgSSLMode:  pgSSLMode,
 
-		RedisHost:          redisHost,
-		CORSAllowedOrigins: corsAllowedOrigins,
-		RedisPort:          redisPort,
+		RedisHost: redisHost,
+		RedisPort: redisPort,
 
 		JwtSecret: jwtSecret,
 
-		GoPort: goPort,
-		AppEnv: appEnv,
+		GoPort:             goPort,
+		AppEnv:             appEnv,
+		CORSAllowedOrigins: corsAllowedOrigins,
+		GlobalRateLimit:    globalRateLimit,
+		GlobalRateBurst:    globalRateBurst,
+		IPRateLimit:        ipRateLimit,
+		IPRateBurst:        ipRateBurst,
 
 		LichessGetGamesURL: lichessGetGamesURL,
 	}, nil

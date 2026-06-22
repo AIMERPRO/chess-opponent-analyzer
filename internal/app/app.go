@@ -11,6 +11,7 @@ import (
 
 	"github.com/AIMERPRO/chess-opponent-analyzer/internal/core/config"
 	"github.com/AIMERPRO/chess-opponent-analyzer/internal/core/middleware"
+	"github.com/AIMERPRO/chess-opponent-analyzer/internal/core/ratelimiter"
 	"github.com/AIMERPRO/chess-opponent-analyzer/internal/features/analysis"
 	"github.com/AIMERPRO/chess-opponent-analyzer/internal/features/auth"
 	"github.com/AIMERPRO/chess-opponent-analyzer/internal/infrastructure/lichess"
@@ -46,8 +47,14 @@ func NewApp(ctx context.Context, cfg *config.Config, log *zap.Logger) (*App, err
 		Addr: fmt.Sprintf(":%d", cfg.GoPort),
 	}
 
+	globalRateLimiter := ratelimiter.NewGlobalRateLimiter(float64(cfg.GlobalRateLimit), cfg.GlobalRateBurst)
+	ipRateLimiter := ratelimiter.NewIPRateLimiter(float64(cfg.IPRateLimit), cfg.IPRateBurst)
+
 	router := http.NewServeMux()
-	server.Handler = middleware.CORSMiddleware(cfg, router)
+	handler := http.Handler(router)
+	handler = middleware.CORSMiddleware(cfg, handler)
+	handler = middleware.RateLimitMiddleware(globalRateLimiter, ipRateLimiter, handler)
+	server.Handler = handler
 
 	authTokenRepo := auth.NewTokenRepo(pool)
 	authUserRepo := auth.NewUserRepo(pool)
@@ -70,7 +77,10 @@ func NewApp(ctx context.Context, cfg *config.Config, log *zap.Logger) (*App, err
 	}
 
 	app.backgroundJobs = append(app.backgroundJobs, func(ctx context.Context) {
-		StartExpiredTokensCleaner(ctx, authTokenRepo, log)
+		startExpiredTokensCleaner(ctx, authTokenRepo, log)
+	})
+	app.backgroundJobs = append(app.backgroundJobs, func(ctx context.Context) {
+		startIPLimiterCleaner(ctx, ipRateLimiter, log)
 	})
 
 	return app, nil

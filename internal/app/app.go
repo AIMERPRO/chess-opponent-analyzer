@@ -22,12 +22,13 @@ import (
 )
 
 type App struct {
-	log         *zap.Logger
-	cfg         *config.Config
-	pool        *pgxpool.Pool
-	redisClient *goredis.Client
-	server      *http.Server
-	router      *http.ServeMux
+	log            *zap.Logger
+	cfg            *config.Config
+	pool           *pgxpool.Pool
+	redisClient    *goredis.Client
+	server         *http.Server
+	router         *http.ServeMux
+	backgroundJobs []func(ctx context.Context)
 }
 
 func NewApp(ctx context.Context, cfg *config.Config, log *zap.Logger) (*App, error) {
@@ -46,7 +47,6 @@ func NewApp(ctx context.Context, cfg *config.Config, log *zap.Logger) (*App, err
 	}
 
 	router := http.NewServeMux()
-	server.Handler = router
 	server.Handler = middleware.CORSMiddleware(cfg, router)
 
 	authTokenRepo := auth.NewTokenRepo(pool)
@@ -60,14 +60,20 @@ func NewApp(ctx context.Context, cfg *config.Config, log *zap.Logger) (*App, err
 	analysisRouter := analysis.NewHandler(analysisService, log)
 	analysisRouter.RegisterRoutes(router, cfg)
 
-	return &App{
+	app := &App{
 		log:         log,
 		cfg:         cfg,
 		pool:        pool,
 		redisClient: redisClient,
 		server:      server,
 		router:      router,
-	}, nil
+	}
+
+	app.backgroundJobs = append(app.backgroundJobs, func(ctx context.Context) {
+		StartExpiredTokensCleaner(ctx, authTokenRepo, log)
+	})
+
+	return app, nil
 }
 
 func (a *App) Start() error {
@@ -80,6 +86,10 @@ func (a *App) Start() error {
 		<-ctx.Done()
 		a.Stop()
 	}()
+
+	for _, job := range a.backgroundJobs {
+		go job(ctx)
+	}
 
 	if err := a.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return err

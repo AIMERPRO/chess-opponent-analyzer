@@ -3,6 +3,7 @@ package analysis
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
@@ -77,7 +78,10 @@ func (s *service) analyzeGames(ctx context.Context, username string, speed strin
 	tenDaysAgo := time.Now().AddDate(0, 0, -10).UnixMilli()
 
 	for _, game := range games {
-		userBlackOrWhite := s.checkIfUserBlackOrWhite(game, username)
+		userBlackOrWhite, gameErr := s.checkIfUserBlackOrWhite(game, username)
+		if gameErr != nil {
+			continue
+		}
 
 		if userBlackOrWhite == "Black" {
 			if game.Opening != nil {
@@ -190,11 +194,14 @@ func (s *service) analyzeGames(ctx context.Context, username string, speed strin
 	}, nil
 }
 
-func (s *service) checkIfUserBlackOrWhite(game lichess.GameLichess, username string) string {
+func (s *service) checkIfUserBlackOrWhite(game lichess.GameLichess, username string) (string, error) {
 	if game.Players.Black.User != nil && game.Players.Black.User.Name == username {
-		return "Black"
+		return "Black", nil
 	}
-	return "White"
+	if game.Players.White.User != nil && game.Players.White.User.Name == username {
+		return "White", nil
+	}
+	return "", fmt.Errorf("user %s not found in game", username)
 }
 
 func (s *service) mostPopularDebut(counter map[string]int) string {

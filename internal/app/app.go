@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	_ "github.com/AIMERPRO/chess-opponent-analyzer/docs"
 	"github.com/AIMERPRO/chess-opponent-analyzer/internal/core/config"
 	"github.com/AIMERPRO/chess-opponent-analyzer/internal/core/middleware"
 	"github.com/AIMERPRO/chess-opponent-analyzer/internal/core/ratelimiter"
@@ -19,6 +20,7 @@ import (
 	"github.com/AIMERPRO/chess-opponent-analyzer/internal/infrastructure/redis"
 	"github.com/jackc/pgx/v5/pgxpool"
 	goredis "github.com/redis/go-redis/v9"
+	httpSwagger "github.com/swaggo/http-swagger"
 	"go.uber.org/zap"
 )
 
@@ -67,6 +69,8 @@ func NewApp(ctx context.Context, cfg *config.Config, log *zap.Logger) (*App, err
 	analysisService := analysis.NewService(lichessClient, redisClient)
 	analysisRouter := analysis.NewHandler(analysisService, log)
 	analysisRouter.RegisterRoutes(router, cfg)
+
+	router.Handle("/swagger/", httpSwagger.WrapHandler)
 
 	app := &App{
 		log:         log,

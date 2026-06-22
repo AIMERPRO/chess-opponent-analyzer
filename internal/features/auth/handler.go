@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
@@ -38,17 +37,20 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, cfg *config.Config) {
 	mux.Handle("PATCH /users/{id}", middleware.AuthMiddleware(cfg, http.HandlerFunc(h.UpdateUser)))
 }
 
+// Login godoc
+// @Summary      Login
+// @Description  Authenticate by username/password and receive an access/refresh token pair
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      LoginRequestDTO  true  "Login credentials"
+// @Success      200      {object}  TokenResponseDTO
+// @Failure      400      {object}  map[string]string
+// @Failure      401      {object}  map[string]string
+// @Router       /auth/login [post]
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
-	var req LoginRequestDTO
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.log.Error("decoding request failed", zap.Error(err))
-		response.Error(w, http.StatusBadRequest, "invalid request body")
-		return
-	}
-
-	if err := req.Validate(); err != nil {
-		h.log.Error("validation failed", zap.Error(err))
-		response.Error(w, http.StatusBadRequest, err.Error())
+	req, ok := decodeAndValidate[LoginRequestDTO](r, w, h.log)
+	if !ok {
 		return
 	}
 
@@ -62,17 +64,21 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusOK, tokenPair)
 }
 
+// Register godoc
+// @Summary      Register
+// @Description  Create a new account and receive an access/refresh token pair
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      RegisterRequestDTO  true  "Registration data"
+// @Success      200      {object}  TokenResponseDTO
+// @Failure      400      {object}  map[string]string
+// @Failure      409      {object}  map[string]string
+// @Failure      500      {object}  map[string]string
+// @Router       /auth/register [post]
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
-	var req RegisterRequestDTO
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.log.Error("decoding request failed", zap.Error(err))
-		response.Error(w, http.StatusBadRequest, "invalid request body")
-		return
-	}
-
-	if err := req.Validate(); err != nil {
-		h.log.Error("validation failed", zap.Error(err))
-		response.Error(w, http.StatusBadRequest, err.Error())
+	req, ok := decodeAndValidate[RegisterRequestDTO](r, w, h.log)
+	if !ok {
 		return
 	}
 
@@ -90,17 +96,21 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusOK, tokenPair)
 }
 
+// RefreshToken godoc
+// @Summary      Refresh tokens
+// @Description  Exchange a valid refresh token for a new access/refresh token pair
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      TokenRequestDTO  true  "Refresh token"
+// @Success      200      {object}  TokenResponseDTO
+// @Failure      400      {object}  map[string]string
+// @Failure      401      {object}  map[string]string
+// @Failure      404      {object}  map[string]string
+// @Router       /auth/refresh [post]
 func (h *Handler) RefreshToken(w http.ResponseWriter, r *http.Request) {
-	var req TokenRequestDTO
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.log.Error("decoding request failed", zap.Error(err))
-		response.Error(w, http.StatusBadRequest, "invalid request body")
-		return
-	}
-
-	if err := req.Validate(); err != nil {
-		h.log.Error("validation failed", zap.Error(err))
-		response.Error(w, http.StatusBadRequest, err.Error())
+	req, ok := decodeAndValidate[TokenRequestDTO](r, w, h.log)
+	if !ok {
 		return
 	}
 
@@ -118,17 +128,20 @@ func (h *Handler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusOK, tokenPair)
 }
 
+// Logout godoc
+// @Summary      Logout
+// @Description  Invalidate a single refresh token
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      TokenRequestDTO  true  "Refresh token"
+// @Success      204      "No Content"
+// @Failure      400      {object}  map[string]string
+// @Failure      401      {object}  map[string]string
+// @Router       /auth/logout [post]
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
-	var req TokenRequestDTO
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.log.Error("decoding request failed", zap.Error(err))
-		response.Error(w, http.StatusBadRequest, "invalid request body")
-		return
-	}
-
-	if err := req.Validate(); err != nil {
-		h.log.Error("validation failed", zap.Error(err))
-		response.Error(w, http.StatusBadRequest, err.Error())
+	req, ok := decodeAndValidate[TokenRequestDTO](r, w, h.log)
+	if !ok {
 		return
 	}
 
@@ -147,6 +160,16 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusNoContent, nil)
 }
 
+// LogoutFromAllDevices godoc
+// @Summary      Logout from all devices
+// @Description  Invalidate every refresh token of the authenticated user
+// @Tags         auth
+// @Security     BearerAuth
+// @Produce      json
+// @Success      204  "No Content"
+// @Failure      401  {object}  map[string]string
+// @Failure      500  {object}  map[string]string
+// @Router       /auth/logout-all [post]
 func (h *Handler) LogoutFromAllDevices(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value(middleware.UserIDKey).(int64)
 
@@ -160,6 +183,18 @@ func (h *Handler) LogoutFromAllDevices(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusNoContent, nil)
 }
 
+// GetUser godoc
+// @Summary      Get user by ID
+// @Tags         users
+// @Security     BearerAuth
+// @Produce      json
+// @Param        id   path      int  true  "User ID"
+// @Success      200  {object}  UserResponseDTO
+// @Failure      400  {object}  map[string]string
+// @Failure      401  {object}  map[string]string
+// @Failure      404  {object}  map[string]string
+// @Failure      500  {object}  map[string]string
+// @Router       /users/{id} [get]
 func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
 	userIDStr := r.PathValue("id")
 	userID, err := strconv.ParseInt(userIDStr, 10, 64)
@@ -183,6 +218,21 @@ func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusOK, user)
 }
 
+// UpdateUser godoc
+// @Summary      Update user
+// @Description  Update username and/or lichess username of the user
+// @Tags         users
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        id       path      int            true  "User ID"
+// @Param        request  body      UpdateUserDTO  true  "Fields to update"
+// @Success      200      {object}  UserResponseDTO
+// @Failure      400      {object}  map[string]string
+// @Failure      401      {object}  map[string]string
+// @Failure      404      {object}  map[string]string
+// @Failure      500      {object}  map[string]string
+// @Router       /users/{id} [patch]
 func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	userIDStr := r.PathValue("id")
 	userID, err := strconv.ParseInt(userIDStr, 10, 64)
@@ -192,16 +242,8 @@ func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req UpdateUserDTO
-	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.log.Error("decoding request failed", zap.Error(err))
-		response.Error(w, http.StatusBadRequest, "invalid request body")
-		return
-	}
-
-	if err = req.Validate(); err != nil {
-		h.log.Error("validation failed", zap.Error(err))
-		response.Error(w, http.StatusBadRequest, err.Error())
+	req, ok := decodeAndValidate[UpdateUserDTO](r, w, h.log)
+	if !ok {
 		return
 	}
 

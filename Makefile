@@ -18,6 +18,9 @@ make-migration:
 test:
 	go test ./... -v
 
+swagger-create-docs:
+	swag init -g cmd/main.go
+
 deploy:
 	docker compose up --build -d --remove-orphans
 

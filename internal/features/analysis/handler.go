@@ -26,6 +26,18 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, cfg *config.Config) {
 	mux.Handle("GET /analyze/{username}", middleware.AuthMiddleware(cfg, http.HandlerFunc(h.AnalyzeUser)))
 }
 
+// AnalyzeUser godoc
+// @Summary      Analyze opponent
+// @Description  Aggregate stats (winrate, popular/best openings, accuracy, tilt) for a lichess user
+// @Tags         analysis
+// @Security     BearerAuth
+// @Produce      json
+// @Param        username  path      string  true   "Lichess username"
+// @Param        speed     query     string  false  "Game speed"  Enums(bullet, blitz, rapid, classical)  default(blitz)
+// @Success      200       {object}  AnalyzeDTO
+// @Failure      401       {object}  map[string]string
+// @Failure      500       {object}  map[string]string
+// @Router       /analyze/{username} [get]
 func (h *Handler) AnalyzeUser(w http.ResponseWriter, r *http.Request) {
 	username := r.PathValue("username")
 	speed := r.URL.Query().Get("speed")

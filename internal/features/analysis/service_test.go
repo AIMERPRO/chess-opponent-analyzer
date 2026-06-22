@@ -56,6 +56,23 @@ func heroGame(opening, heroColor, winner, status string, heroAccuracy int, creat
 	}
 }
 
+// gameWithoutHero builds a game where neither player is the hero, so it must be
+// skipped by analyzeGames (and excluded from the processed-games denominator).
+func gameWithoutHero() lichess.GameLichess {
+	w := "white"
+	return lichess.GameLichess{
+		Speed:   "blitz",
+		Status:  "mate",
+		Winner:  &w,
+		Opening: &lichess.Opening{Name: "London System"},
+		Players: lichess.Players{
+			White: lichess.Player{User: &lichess.User{Name: "alice"}},
+			Black: lichess.Player{User: &lichess.User{Name: "bob"}},
+		},
+		CreatedAt: time.Now().UnixMilli(),
+	}
+}
+
 func newTestService(srv *httptest.Server) *service {
 	return &service{lichessClient: lichess.NewClient(srv.URL + "/")}
 }
@@ -138,6 +155,100 @@ func TestService_AnalyzeGames_LichessError(t *testing.T) {
 	_, err := s.analyzeGames(context.Background(), heroName, "blitz")
 	if err == nil {
 		t.Fatal("expected error when lichess returns non-200, got nil")
+	}
+}
+
+// No games at all must yield a zero-valued result, not NaN — and crucially it
+// must stay JSON-serializable (Go's json.Marshal errors on NaN/Inf).
+func TestService_AnalyzeGames_NoGames(t *testing.T) {
+	srv := newGamesServer(t, nil)
+	s := newTestService(srv)
+
+	res, err := s.analyzeGames(context.Background(), heroName, "blitz")
+	if err != nil {
+		t.Fatalf("analyzeGames() error = %v", err)
+	}
+
+	if !approx(res.Winrate, 0) {
+		t.Errorf("Winrate = %v, want 0 (got NaN?)", res.Winrate)
+	}
+	if !approx(res.TiltFactor, 0) {
+		t.Errorf("TiltFactor = %v, want 0 (got NaN?)", res.TiltFactor)
+	}
+	if !approx(res.AvgAccuracy, 0) {
+		t.Errorf("AvgAccuracy = %v, want 0", res.AvgAccuracy)
+	}
+
+	if _, err = json.Marshal(res); err != nil {
+		t.Fatalf("result is not JSON-serializable: %v", err)
+	}
+}
+
+// Games exist but the user plays in none of them -> processedGames == 0,
+// same zero-valued, serializable result.
+func TestService_AnalyzeGames_UserNotFound(t *testing.T) {
+	srv := newGamesServer(t, []lichess.GameLichess{gameWithoutHero(), gameWithoutHero()})
+	s := newTestService(srv)
+
+	res, err := s.analyzeGames(context.Background(), heroName, "blitz")
+	if err != nil {
+		t.Fatalf("analyzeGames() error = %v", err)
+	}
+
+	if !approx(res.Winrate, 0) {
+		t.Errorf("Winrate = %v, want 0", res.Winrate)
+	}
+	if !approx(res.TiltFactor, 0) {
+		t.Errorf("TiltFactor = %v, want 0", res.TiltFactor)
+	}
+	if _, err = json.Marshal(res); err != nil {
+		t.Fatalf("result is not JSON-serializable: %v", err)
+	}
+}
+
+// All games won -> losses == 0, TiltFactor must not divide by zero.
+func TestService_AnalyzeGames_AllWins(t *testing.T) {
+	recent := time.Now().UnixMilli()
+	games := []lichess.GameLichess{
+		heroGame("Italian Game", "white", "white", "mate", 90, recent),
+		heroGame("Italian Game", "white", "white", "mate", 80, recent),
+	}
+	srv := newGamesServer(t, games)
+	s := newTestService(srv)
+
+	res, err := s.analyzeGames(context.Background(), heroName, "blitz")
+	if err != nil {
+		t.Fatalf("analyzeGames() error = %v", err)
+	}
+
+	if !approx(res.Winrate, 100) {
+		t.Errorf("Winrate = %v, want 100", res.Winrate)
+	}
+	if !approx(res.TiltFactor, 0) {
+		t.Errorf("TiltFactor = %v, want 0 (no losses, got NaN?)", res.TiltFactor)
+	}
+}
+
+// Skipped games (no hero) must not inflate the winrate denominator:
+// 1 win + 1 loss over 2 processed games = 50%, despite a 3rd unrelated game.
+func TestService_AnalyzeGames_SkipsUnknownPlayerGames(t *testing.T) {
+	recent := time.Now().UnixMilli()
+	games := []lichess.GameLichess{
+		heroGame("Italian Game", "white", "white", "mate", 90, recent),
+		heroGame("Italian Game", "white", "black", "resign", 70, recent),
+		gameWithoutHero(),
+	}
+	srv := newGamesServer(t, games)
+	s := newTestService(srv)
+
+	res, err := s.analyzeGames(context.Background(), heroName, "blitz")
+	if err != nil {
+		t.Fatalf("analyzeGames() error = %v", err)
+	}
+
+	// denominator must be 2 (processed), not 3 (total): 1/2 = 50%, not ~33%
+	if !approx(res.Winrate, 50) {
+		t.Errorf("Winrate = %v, want 50 (denominator should exclude skipped games)", res.Winrate)
 	}
 }
 

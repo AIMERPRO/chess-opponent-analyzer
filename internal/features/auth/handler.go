@@ -2,9 +2,11 @@ package auth
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 
+	"github.com/AIMERPRO/chess-opponent-analyzer/internal/core/apperrors"
 	"github.com/AIMERPRO/chess-opponent-analyzer/internal/core/config"
 	"github.com/AIMERPRO/chess-opponent-analyzer/internal/core/middleware"
 	"github.com/AIMERPRO/chess-opponent-analyzer/internal/core/response"
@@ -44,10 +46,16 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := req.Validate(); err != nil {
+		h.log.Error("validation failed", zap.Error(err))
+		response.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
 	tokenPair, err := h.service.Login(r.Context(), req)
 	if err != nil {
 		h.log.Error("failed to login user", zap.Error(err))
-		response.Error(w, http.StatusUnauthorized, err.Error())
+		response.Error(w, http.StatusUnauthorized, "invalid credentials")
 		return
 	}
 
@@ -62,10 +70,20 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := req.Validate(); err != nil {
+		h.log.Error("validation failed", zap.Error(err))
+		response.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
 	tokenPair, err := h.service.Register(r.Context(), req)
 	if err != nil {
 		h.log.Error("failed to register user", zap.Error(err))
-		response.Error(w, http.StatusBadRequest, err.Error())
+		if errors.Is(err, apperrors.ErrConflict) {
+			response.Error(w, http.StatusConflict, "username already exists")
+			return
+		}
+		response.Error(w, http.StatusInternalServerError, "failed to register user")
 		return
 	}
 
@@ -80,9 +98,19 @@ func (h *Handler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := req.Validate(); err != nil {
+		h.log.Error("validation failed", zap.Error(err))
+		response.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
 	tokenPair, err := h.service.RefreshToken(r.Context(), req)
 	if err != nil {
 		h.log.Error("failed to refresh token", zap.Error(err))
+		if errors.Is(err, apperrors.ErrNotFound) {
+			response.Error(w, http.StatusNotFound, "token not found")
+			return
+		}
 		response.Error(w, http.StatusUnauthorized, err.Error())
 		return
 	}
@@ -98,10 +126,20 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := req.Validate(); err != nil {
+		h.log.Error("validation failed", zap.Error(err))
+		response.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
 	err := h.service.Logout(r.Context(), req.RefreshToken)
 
 	if err != nil {
 		h.log.Error("failed to logout", zap.Error(err))
+		if errors.Is(err, apperrors.ErrNotFound) {
+			response.Error(w, http.StatusUnauthorized, "invalid token")
+			return
+		}
 		response.Error(w, http.StatusUnauthorized, err.Error())
 		return
 	}
@@ -134,6 +172,10 @@ func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
 	user, err := h.service.GetUser(r.Context(), userID)
 	if err != nil {
 		h.log.Error("failed to get user", zap.Error(err))
+		if errors.Is(err, apperrors.ErrNotFound) {
+			response.Error(w, http.StatusNotFound, "user not found")
+			return
+		}
 		response.Error(w, http.StatusInternalServerError, "failed to get user")
 		return
 	}
@@ -157,9 +199,19 @@ func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err = req.Validate(); err != nil {
+		h.log.Error("validation failed", zap.Error(err))
+		response.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
 	user, err := h.service.UpdateUser(r.Context(), userID, req)
 	if err != nil {
 		h.log.Error("failed to update user", zap.Error(err))
+		if errors.Is(err, apperrors.ErrNotFound) {
+			response.Error(w, http.StatusNotFound, "user not found")
+			return
+		}
 		response.Error(w, http.StatusInternalServerError, "failed to update user")
 		return
 	}

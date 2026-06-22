@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/AIMERPRO/chess-opponent-analyzer/internal/core/apperrors"
 	"github.com/AIMERPRO/chess-opponent-analyzer/internal/domain"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -52,7 +54,7 @@ func (r *UserRepo) GetByID(ctx context.Context, id int64) (*domain.User, error) 
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("user not found: %w", err)
+			return nil, fmt.Errorf("user not found: %w", apperrors.ErrNotFound)
 		}
 		return nil, fmt.Errorf("get user by id: %w", err)
 	}
@@ -70,11 +72,11 @@ func (r *UserRepo) GetByUsername(ctx context.Context, username string) (*domain.
 		&user.LichessUsername,
 		&user.Password,
 		&user.CreatedAt,
-		)
+	)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("user not found: %w", err)
+			return nil, fmt.Errorf("user not found: %w", apperrors.ErrNotFound)
 		}
 		return nil, fmt.Errorf("get user by username: %w", err)
 	}
@@ -97,6 +99,10 @@ func (r *UserRepo) Create(ctx context.Context, user *domain.User) (*domain.User,
 		&created.CreatedAt,
 	)
 	if err != nil {
+		if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == "23505" {
+			return nil, fmt.Errorf("username already exists: %w", apperrors.ErrConflict)
+		}
+
 		return nil, err
 	}
 

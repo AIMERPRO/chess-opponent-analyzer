@@ -9,6 +9,14 @@ import (
 	"go.uber.org/zap"
 )
 
+// @title           Chess Opponent Analyzer API
+// @version         1.0
+// @description     API for analyzing chess opponents on lichess.org
+// @host            localhost:8080
+// @BasePath        /
+// @securityDefinitions.apikey BearerAuth
+// @in              header
+// @name            Authorization
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -29,7 +37,7 @@ func main() {
 	if err != nil {
 		log.Fatal("failed to create app", zap.Error(err))
 	}
-	
+
 	if err = application.Start(); err != nil {
 		log.Fatal("failed to start app", zap.Error(err))
 	}

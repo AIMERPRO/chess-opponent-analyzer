@@ -2,6 +2,11 @@ package auth
 
 import "time"
 
+// validatable is the shared contract of every DTO that validates itself.
+type validatable interface {
+	Validate() error
+}
+
 // LoginRequestDTO represents the request body for user authentication
 type LoginRequestDTO struct {
 	Username string `json:"username"`

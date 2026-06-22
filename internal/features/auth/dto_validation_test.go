@@ -7,11 +7,6 @@ import (
 	"github.com/AIMERPRO/chess-opponent-analyzer/internal/core/apperrors"
 )
 
-// validatable is the shared contract of every DTO that validates itself.
-type validatable interface {
-	Validate() error
-}
-
 // validateCase is a single row of a validation table test.
 type validateCase struct {
 	name        string

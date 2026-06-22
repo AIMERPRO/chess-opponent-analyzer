@@ -54,6 +54,7 @@ func NewApp(ctx context.Context, cfg *config.Config, log *zap.Logger) (*App, err
 	handler := http.Handler(router)
 	handler = middleware.CORSMiddleware(cfg, handler)
 	handler = middleware.RateLimitMiddleware(globalRateLimiter, ipRateLimiter, handler)
+	handler = middleware.LoggingMiddleware(log, handler)
 	server.Handler = handler
 
 	authTokenRepo := auth.NewTokenRepo(pool)

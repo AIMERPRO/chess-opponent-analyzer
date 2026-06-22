@@ -1,0 +1,13 @@
+include .env
+export
+
+DATABASE_URL=postgres://$(PG_USER):$(PG_PASSWORD)@$(PG_HOST):$(PG_PORT)/$(PG_DATABASE)?sslmode=$(PG_SSL_MODE)
+
+run-dev-local:
+	@go run cmd/main.go
+
+local-migrate-up:
+	migrate -path migrations -database "$(DATABASE_URL)" up
+
+local-migrate-down:
+	migrate -path migrations -database "$(DATABASE_URL)" down

@@ -1,0 +1,13 @@
+# Environment
+.env
+
+# Build
+bin/
+*.exe
+
+# Logs
+logs/
+
+# IDE
+.idea/
+.vscode/

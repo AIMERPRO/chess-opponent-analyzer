@@ -54,6 +54,35 @@ async function login(username, password) {
   return true;
 }
 
+async function register(username, password, lichessUsername) {
+  const apiBase = await getApiBase();
+  const deviceId = await getDeviceId();
+
+  const res = await fetch(`${apiBase}/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      username,
+      password,
+      lichess_username: lichessUsername,
+      device_id: deviceId,
+    }),
+  });
+
+  if (!res.ok) {
+    const msg = await readError(res);
+    throw new Error(msg || `Ошибка регистрации (HTTP ${res.status})`);
+  }
+
+  // backend returns the same token pair as login, so the user is logged in right away
+  const data = await res.json();
+  await setStorage({
+    accessToken: data.access_token,
+    refreshToken: data.refresh_token,
+  });
+  return true;
+}
+
 async function refreshTokens() {
   const apiBase = await getApiBase();
   const { refreshToken } = await getStorage("refreshToken");
@@ -140,6 +169,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       switch (msg.type) {
         case "login":
           await login(msg.username, msg.password);
+          sendResponse({ ok: true });
+          break;
+        case "register":
+          await register(msg.username, msg.password, msg.lichessUsername);
           sendResponse({ ok: true });
           break;
         case "logout":

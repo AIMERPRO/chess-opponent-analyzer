@@ -77,11 +77,13 @@ func (s *service) analyzeGames(ctx context.Context, username string, speed strin
 
 	tenDaysAgo := time.Now().AddDate(0, 0, -10).UnixMilli()
 
+	var processedGames int
 	for _, game := range games {
 		userBlackOrWhite, gameErr := s.checkIfUserBlackOrWhite(game, username)
 		if gameErr != nil {
 			continue
 		}
+		processedGames++
 
 		if userBlackOrWhite == "Black" {
 			if game.Opening != nil {
@@ -140,8 +142,16 @@ func (s *service) analyzeGames(ctx context.Context, username string, speed strin
 		}
 	}
 
-	winRate := float64(winCounter) / float64(len(games)) * 100
-	tiltFactor := float64(tiltCounter) / float64(len(games)-winCounter) * 100
+	var winRate float64
+	if processedGames > 0 {
+		winRate = float64(winCounter) / float64(processedGames) * 100
+	}
+
+	var tiltFactor float64
+	losses := processedGames - winCounter
+	if losses > 0 {
+		tiltFactor = float64(tiltCounter) / float64(losses) * 100
+	}
 
 	for _, acc := range accuracyList {
 		avgAccuracy += acc

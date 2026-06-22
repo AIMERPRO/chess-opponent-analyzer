@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/AIMERPRO/chess-opponent-analyzer/internal/core/apperrors"
 	"github.com/AIMERPRO/chess-opponent-analyzer/internal/domain"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -23,6 +24,9 @@ type TokenRepository interface {
 
 	// DeleteAllUserTokens deletes all exists tokens from user (logout operation)
 	DeleteAllUserTokens(ctx context.Context, userID int64) error
+
+	// DeleteExpiredTokens deletes expired tokens from DataBase
+	DeleteExpiredTokens(ctx context.Context) error
 }
 
 type TokenRepo struct {
@@ -53,7 +57,7 @@ func (r *TokenRepo) GetTokenByValue(ctx context.Context, value string) (*domain.
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("token not found: %w", err)
+			return nil, fmt.Errorf("token not found: %w", apperrors.ErrNotFound)
 		}
 		return nil, fmt.Errorf("get token by value: %w", err)
 	}
@@ -95,6 +99,12 @@ func (r *TokenRepo) Delete(ctx context.Context, id int64) error {
 
 func (r *TokenRepo) DeleteAllUserTokens(ctx context.Context, userID int64) error {
 	_, err := r.pool.Exec(ctx, "DELETE FROM refresh_tokens WHERE user_id = $1", userID)
+
+	return err
+}
+
+func (r *TokenRepo) DeleteExpiredTokens(ctx context.Context) error {
+	_, err := r.pool.Exec(ctx, "DELETE FROM refresh_tokens WHERE expires_at < now()")
 
 	return err
 }

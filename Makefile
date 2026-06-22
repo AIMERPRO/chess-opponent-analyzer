@@ -12,6 +12,9 @@ local-migrate-up:
 local-migrate-down:
 	migrate -path migrations -database "$(DATABASE_URL)" down
 
+test:
+	go test ./... -v
+
 deploy:
 	docker compose up --build -d --remove-orphans
 

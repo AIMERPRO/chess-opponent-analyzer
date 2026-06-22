@@ -3,11 +3,15 @@ package auth
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/json"
+	"net/http"
 	"time"
 
+	"github.com/AIMERPRO/chess-opponent-analyzer/internal/core/response"
 	"github.com/AIMERPRO/chess-opponent-analyzer/internal/domain"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -87,4 +91,21 @@ func (s *service) generateTokenPair(ctx context.Context, userID int64, deviceID 
 	}
 
 	return tokenPair, nil
+}
+
+func decodeAndValidate[T validatable](r *http.Request, w http.ResponseWriter, log *zap.Logger) (T, bool) {
+	var req T
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Error("decoding request failed", zap.Error(err))
+		response.Error(w, http.StatusBadRequest, "invalid request body")
+		return req, false
+	}
+
+	if err := req.Validate(); err != nil {
+		log.Error("validation failed", zap.Error(err))
+		response.Error(w, http.StatusBadRequest, err.Error())
+		return req, false
+	}
+
+	return req, true
 }

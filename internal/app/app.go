@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/AIMERPRO/chess-opponent-analyzer/internal/core/config"
+	"github.com/AIMERPRO/chess-opponent-analyzer/internal/core/middleware"
 	"github.com/AIMERPRO/chess-opponent-analyzer/internal/features/analysis"
 	"github.com/AIMERPRO/chess-opponent-analyzer/internal/features/auth"
 	"github.com/AIMERPRO/chess-opponent-analyzer/internal/infrastructure/lichess"
@@ -46,6 +47,7 @@ func NewApp(ctx context.Context, cfg *config.Config, log *zap.Logger) (*App, err
 
 	router := http.NewServeMux()
 	server.Handler = router
+	server.Handler = middleware.CORSMiddleware(cfg, router)
 
 	authTokenRepo := auth.NewTokenRepo(pool)
 	authUserRepo := auth.NewUserRepo(pool)

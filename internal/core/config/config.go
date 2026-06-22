@@ -14,8 +14,9 @@ type Config struct {
 	PgDatabase string
 	PgSSLMode  string
 
-	RedisHost string
-	RedisPort int
+	RedisHost          string
+	CORSAllowedOrigins string
+	RedisPort          int
 
 	JwtSecret string
 
@@ -80,6 +81,11 @@ func NewConfig() (*Config, error) {
 		return nil, fmt.Errorf("APP_ENV environment variable not set")
 	}
 
+	corsAllowedOrigins := os.Getenv("CORS_ALLOWED_ORIGINS")
+	if corsAllowedOrigins == "" {
+		corsAllowedOrigins = "*"
+	}
+
 	/* Variables for Lichess API */
 	lichessGetGamesURL := os.Getenv("LICHESS_GET_GAMES_URL")
 	if lichessGetGamesURL == "" {
@@ -94,8 +100,9 @@ func NewConfig() (*Config, error) {
 		PgDatabase: pgDatabase,
 		PgSSLMode:  pgSSLMode,
 
-		RedisHost: redisHost,
-		RedisPort: redisPort,
+		RedisHost:          redisHost,
+		CORSAllowedOrigins: corsAllowedOrigins,
+		RedisPort:          redisPort,
 
 		JwtSecret: jwtSecret,
 

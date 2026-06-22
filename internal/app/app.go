@@ -47,8 +47,8 @@ func NewApp(ctx context.Context, cfg *config.Config, log *zap.Logger) (*App, err
 		Addr: fmt.Sprintf(":%d", cfg.GoPort),
 	}
 
-	globalRateLimiter := ratelimiter.NewGlobalRateLimiter(500, 1000)
-	ipRateLimiter := ratelimiter.NewIPRateLimiter(10, 20)
+	globalRateLimiter := ratelimiter.NewGlobalRateLimiter(float64(cfg.GlobalRateLimit), cfg.GlobalRateBurst)
+	ipRateLimiter := ratelimiter.NewIPRateLimiter(float64(cfg.IPRateLimit), cfg.IPRateBurst)
 
 	router := http.NewServeMux()
 	handler := http.Handler(router)

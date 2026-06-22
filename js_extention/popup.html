@@ -13,6 +13,10 @@
   </label>
 
   <div id="logged-out">
+    <div class="tabs">
+      <button type="button" id="tab-login" class="tab active">Вход</button>
+      <button type="button" id="tab-register" class="tab">Регистрация</button>
+    </div>
     <label class="field">
       <span>Логин</span>
       <input type="text" id="username" autocomplete="username">
@@ -21,7 +25,11 @@
       <span>Пароль</span>
       <input type="password" id="password" autocomplete="current-password">
     </label>
-    <button id="login-btn">Войти</button>
+    <label class="field" id="lichess-field" hidden>
+      <span>Lichess username</span>
+      <input type="text" id="lichessUsername" autocomplete="off">
+    </label>
+    <button id="submit-btn">Войти</button>
   </div>
 
   <div id="logged-in" hidden>

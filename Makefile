@@ -11,3 +11,18 @@ local-migrate-up:
 
 local-migrate-down:
 	migrate -path migrations -database "$(DATABASE_URL)" down
+
+deploy:
+	docker compose up --build -d --remove-orphans
+
+down:
+	docker compose down
+
+logs:
+	docker compose logs -f
+
+logs-web:
+	docker compose logs -f web
+
+restart:
+	docker compose restart web

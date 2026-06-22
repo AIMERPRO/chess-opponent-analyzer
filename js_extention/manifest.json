@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "Chess Opponent Analyzer",
+  "version": "0.1.0",
+  "description": "Анализ оппонента на lichess.org через собственный Go API.",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://lichess.org/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Chess Opponent Analyzer"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://lichess.org/*"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <h1>Chess Opponent Analyzer</h1>
+
+  <label class="field">
+    <span>API адрес</span>
+    <input type="text" id="apiBase" placeholder="http://localhost:8080">
+  </label>
+
+  <div id="logged-out">
+    <label class="field">
+      <span>Логин</span>
+      <input type="text" id="username" autocomplete="username">
+    </label>
+    <label class="field">
+      <span>Пароль</span>
+      <input type="password" id="password" autocomplete="current-password">
+    </label>
+    <button id="login-btn">Войти</button>
+  </div>
+
+  <div id="logged-in" hidden>
+    <p class="ok">Вы вошли ✓</p>
+    <button id="logout-btn">Выйти</button>
+  </div>
+
+  <p id="status" class="status"></p>
+
+  <script src="popup.js"></script>
+</body>
+</html>

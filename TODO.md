@@ -20,4 +20,4 @@
 - [ ] HTTPS / TLS
 - [ ] Swagger документация
 - [ ] Метрики и мониторинг (Prometheus)
-- [ ] Docker Compose для локальной разработки
+- [x] Docker Compose для локальной разработки
